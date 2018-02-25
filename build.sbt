@@ -6,16 +6,11 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.4"
 )
 
-lazy val root = (project in file("."))
-  .aggregate(service)
-  .settings(
-    name := "helloWorldRoot",
-    commonSettings,
-  )
 
 lazy val service = project
   .settings(
     name := "helloWorld",
     commonSettings,
-    libraryDependencies ++= serviceDeps
+    libraryDependencies ++= serviceDeps,
+    mainClass in assembly := Some("com.patrickmcgeever.helloworld.HelloWorld"),
   )
