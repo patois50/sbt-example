@@ -1,7 +1,4 @@
 import Dependencies._
-import com.typesafe.sbt.packager.docker.Cmd
-
-enablePlugins(DockerPlugin)
 
 lazy val commonSettings = Seq(
   organization := "com.patrickmcgeever",
@@ -9,28 +6,39 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.4"
 )
 
-maintainer in Docker := "Patrick"
-
-dockerExposedPorts := Seq(8080)
-//defaultLinuxInstallLocation in Docker := "/opt/hello-world"
-dockerExecCommand := Seq("/opt/hello-world/start.sh")
-
-
-dockerCommands := Seq()
-dockerCommands := Seq(
-  Cmd("FROM", "8u151-jre-alpine3.7"),
-  Cmd("LABEL", s"""MAINTAINER="${maintainer.value}""""),
-  Cmd("PORTS", "8080"),
-  Cmd("WORKDIR", "/opt/hello-world/")
+lazy val dockerSettings = Seq(
+  mappings in Docker += baseDirectory.value / "bin" / "start.sh" -> "start.sh",
+  packageName in Docker := "hello-world",
+  dockerBaseImage := "openjdk:8u151-jre-alpine3.7",
+  dockerLabels := Map("maintaner" -> "patrick"),
+  dockerExposedPorts := Seq(8080),
+  defaultLinuxInstallLocation in Docker := "/opt/hello-world",
+  dockerEntrypoint := Seq(),
+  dockerCmd := Seq("./start.sh")
 )
 
-mappings in Docker += baseDirectory.value / "bin" / "start.sh" -> "bin/start.sh"
-
+lazy val root = (project in file("."))
+  .settings(name := "hello-world")
+  .settings(commonSettings)
+  .aggregate(service)
 
 lazy val service = project
+  .enablePlugins(DockerPlugin)
   .settings(
-    name := "helloWorld",
+    name := "hello-world",
     commonSettings,
+    dockerSettings,
     libraryDependencies ++= serviceDeps,
-    mainClass in assembly := Some("com.patrickmcgeever.helloworld.HelloWorld")
+    mainClass in assembly := Some("com.patrickmcgeever.helloworld.HelloWorld"),
+    // removes all jar mappings in universal and appends the fat jar
+    mappings in Universal := {
+      val universalMappings = (mappings in Universal).value
+      val fatJar = (assembly in Compile).value
+
+      // removing means filtering
+      val filtered = universalMappings filter {
+        case (_, fileName) => !fileName.startsWith(s"${name.value}-assembly")
+      }
+      filtered :+ fatJar -> ("lib/" + fatJar.getName)
+    }
   )
