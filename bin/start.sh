@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-java -jar /opt/hello-world/lib/helloWord.jar
+java -jar /opt/hello-world/lib/hello-world.jar

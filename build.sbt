@@ -1,4 +1,6 @@
 import Dependencies._
+import com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerHelper._
+import com.typesafe.sbt.packager.docker.Cmd
 
 lazy val commonSettings = Seq(
   organization := "com.patrickmcgeever",
@@ -7,19 +9,18 @@ lazy val commonSettings = Seq(
 )
 
 lazy val dockerSettings = Seq(
-  mappings in Docker += baseDirectory.value / "bin" / "start.sh" -> "start.sh",
   packageName in Docker := "hello-world",
   dockerBaseImage := "openjdk:8u151-jre-alpine3.7",
   dockerLabels := Map("maintaner" -> "patrick"),
   dockerExposedPorts := Seq(8080),
   defaultLinuxInstallLocation in Docker := "/opt/hello-world",
+  dockerCommands += Cmd("RUN", "chmod -R +x bin"),
   dockerEntrypoint := Seq(),
-  dockerCmd := Seq("./start.sh")
+  dockerCmd := Seq("/opt/hello-world/bin/start.sh")
 )
 
 lazy val root = (project in file("."))
   .settings(name := "hello-world")
-  .settings(commonSettings)
   .aggregate(service)
 
 lazy val service = project
@@ -30,15 +31,9 @@ lazy val service = project
     dockerSettings,
     libraryDependencies ++= serviceDeps,
     mainClass in assembly := Some("com.patrickmcgeever.helloworld.HelloWorld"),
-    // removes all jar mappings in universal and appends the fat jar
     mappings in Universal := {
-      val universalMappings = (mappings in Universal).value
       val fatJar = (assembly in Compile).value
-
-      // removing means filtering
-      val filtered = universalMappings filter {
-        case (_, fileName) => !fileName.startsWith(s"${name.value}-assembly")
-      }
-      filtered :+ fatJar -> ("lib/" + fatJar.getName)
+      val binMapping = directory(file("bin/"))
+      binMapping :+ fatJar -> ("lib/" + "hello-world.jar")
     }
   )
